@@ -5,27 +5,33 @@
 #include <tlhelp32.h>
 
 #pragma region menu
-void print_menu() {
-    printf("****************************************\n");
-    printf("      BLOCK ADS ON SPOTIFY              \n");
-    printf("****************************************\n");
-    printf("1. Block ads\n");
-    printf("2. Check if ads are blocked\n");
-    printf("3. Exit\n");
-    printf("****************************************\n");
-    printf("Choose an option: ");
+void print_menu()
+{
+    printf("========================================\n");
+    printf("|           BLOCK SPOTIFY ADS           |\n");
+    printf("========================================\n");
+    printf("|  [1] Block ads                        |\n");
+    printf("|  [2] Check blocking status            |\n");
+    printf("|  [3] Exit                             |\n");
+    printf("========================================\n");
+    printf("> Enter your choice: ");
 }
+
 #pragma endregion
 
 #pragma region spotify running
-int is_spotify_running() {
+int is_spotify_running()
+{
     PROCESSENTRY32 entry;
     entry.dwSize = sizeof(PROCESSENTRY32);
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-    if (Process32First(snapshot, &entry) == TRUE) {
-        while (Process32Next(snapshot, &entry) == TRUE) {
-            if (_stricmp(entry.szExeFile, "Spotify.exe") == 0) {
+    if (Process32First(snapshot, &entry) == TRUE)
+    {
+        while (Process32Next(snapshot, &entry) == TRUE)
+        {
+            if (_stricmp(entry.szExeFile, "Spotify.exe") == 0)
+            {
                 CloseHandle(snapshot);
                 return 1;
             }
@@ -38,19 +44,24 @@ int is_spotify_running() {
 #pragma endregion
 
 #pragma region kill spotify
-void kill_spotify() {
+void kill_spotify()
+{
     PROCESSENTRY32 entry;
     entry.dwSize = sizeof(PROCESSENTRY32);
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-    if (Process32First(snapshot, &entry) == TRUE) {
-        while (Process32Next(snapshot, &entry) == TRUE) {
-            if (_stricmp(entry.szExeFile, "Spotify.exe") == 0) {
+    if (Process32First(snapshot, &entry) == TRUE)
+    {
+        do
+        {
+            if (_stricmp(entry.szExeFile, "Spotify.exe") == 0)
+            {
                 HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, entry.th32ProcessID);
-                if (hProcess != NULL) {
+                if (hProcess != NULL)
+                {
                     TerminateProcess(hProcess, 9);
                     CloseHandle(hProcess);
-                    printf("Spotify has been closed.\n");
+                    printf("Spotify has been terminated.\n");
                     break;
                 }
             }
@@ -61,28 +72,59 @@ void kill_spotify() {
 #pragma endregion
 
 #pragma region restart spotify
-void restart_spotify() {
-    // Path to the Spotify executable
-    char spotify_path[MAX_PATH];
-    ExpandEnvironmentStrings("%APPDATA%\\Spotify\\Spotify.exe", spotify_path, MAX_PATH);
+void restart_spotify()
+{
+    char spotify_paths[4][MAX_PATH] = {
+        "%APPDATA%\\Spotify\\Spotify.exe",
+        "%LOCALAPPDATA%\\Spotify\\Spotify.exe",
+        "C:\\Program Files\\Spotify\\Spotify.exe",
+        "C:\\Program Files (x86)\\Spotify\\Spotify.exe"};
 
-    // Start Spotify
-    if ((int)ShellExecuteA(NULL, "open", spotify_path, NULL, NULL, SW_SHOWNORMAL) > 32) {
-        printf("Spotify has been restarted.\n");
-    } else {
+    char resolved_path[MAX_PATH];
+    int found = 0;
+
+    for (int i = 0; i < 4; i++)
+    {
+        ExpandEnvironmentStrings(spotify_paths[i], resolved_path, MAX_PATH);
+
+        if (GetFileAttributesA(resolved_path) != INVALID_FILE_ATTRIBUTES)
+        {
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printf("Error: Spotify.exe not found in any common paths.\n");
+        printf("Please ensure that Spotify is installed.\n");
+        return;
+    }
+
+    HINSTANCE result = ShellExecuteA(NULL, "open", resolved_path, NULL, NULL, SW_SHOWNORMAL);
+    if ((int)result > 32)
+    {
+        printf("Spotify has been restarted successfully.\n");
+    }
+    else
+    {
+        DWORD error_code = GetLastError();
         printf("Error restarting Spotify.\n");
     }
 }
 #pragma endregion
 
 #pragma region block ads
-void block_ads() {
-    if (is_spotify_running()) {
+void block_ads()
+{
+    if (is_spotify_running())
+    {
         kill_spotify();
     }
 
     FILE *hosts_file = fopen("C:\\Windows\\System32\\drivers\\etc\\hosts", "a");
-    if (hosts_file == NULL) {
+    if (hosts_file == NULL)
+    {
         perror("Error opening hosts file");
         return;
     }
@@ -131,15 +173,18 @@ void block_ads() {
     fclose(hosts_file);
     printf("Ads successfully blocked!\n");
 
+    Sleep(1000);
     // Restart Spotify
     restart_spotify();
 }
 #pragma endregion
 
 #pragma region check ads blocked
-void check_ads_blocked() {
+void check_ads_blocked()
+{
     FILE *hosts_file = fopen("C:\\Windows\\System32\\drivers\\etc\\hosts", "r");
-    if (hosts_file == NULL) {
+    if (hosts_file == NULL)
+    {
         perror("Error opening hosts file");
         return;
     }
@@ -147,46 +192,48 @@ void check_ads_blocked() {
     char line[256];
     int ads_blocked = 0;
 
-    while (fgets(line, sizeof(line), hosts_file)) {
+    while (fgets(line, sizeof(line), hosts_file))
+    {
         if (strstr(line, "adclick.g.doubleclick.net") ||
-        strstr(line, "adeventtracker.spotify.com") ||
-        strstr(line, "ads-fa.spotify.com") ||
-        strstr(line, "analytics.spotify.com") ||
-        strstr(line, "audio2.spotify.com") ||
-        strstr(line, "b.scorecardresearch.com") ||
-        strstr(line, "bounceexchange.com") ||
-        strstr(line, "bs.serving-sys.com") ||
-        strstr(line, "content.bitsontherun.com") ||
-        strstr(line, "core.insightexpressai.com") ||
-        strstr(line, "crashdump.spotify.com") ||
-        strstr(line, "d2gi7ultltnc2u.cloudfront.net") ||
-        strstr(line, "d3rt1990lpmkn.cloudfront.net") ||
-        strstr(line, "desktop.spotify.com") ||
-        strstr(line, "doubleclick.net") ||
-        strstr(line, "ds.serving-sys.com") ||
-        strstr(line, "googleadservices.com") ||
-        strstr(line, "googleads.g.doubleclick.net") ||
-        strstr(line, "gtssl2-ocsp.geotrust.com") ||
-        strstr(line, "js.moatads.com") ||
-        strstr(line, "log.spotify.com") ||
-        strstr(line, "media-match.com") ||
-        strstr(line, "omaze.com") ||
-        strstr(line, "open.spotify.com") ||
-        strstr(line, "pagead46.l.doubleclick.net") ||
-        strstr(line, "pagead2.googlesyndication.com") ||
-        strstr(line, "partner.googleadservices.com") ||
-        strstr(line, "pubads.g.doubleclick.net") ||
-        strstr(line, "redirector.gvt1.com") ||
-        strstr(line, "s0.2mdn.net") ||
-        strstr(line, "securepubads.g.doubleclick.net") ||
-        strstr(line, "spclient.wg.spotify.com") ||
-        strstr(line, "tpc.googlesyndication.com") ||
-        strstr(line, "v.jwpcdn.com") ||
-        strstr(line, "video-ad-stats.googlesyndication.com") ||
-        strstr(line, "weblb-wg.gslb.spotify.com") ||
-        strstr(line, "www.googleadservices.com") ||
-        strstr(line, "www.googletagservices.com") ||
-        strstr(line, "www.omaze.com")) {
+            strstr(line, "adeventtracker.spotify.com") ||
+            strstr(line, "ads-fa.spotify.com") ||
+            strstr(line, "analytics.spotify.com") ||
+            strstr(line, "audio2.spotify.com") ||
+            strstr(line, "b.scorecardresearch.com") ||
+            strstr(line, "bounceexchange.com") ||
+            strstr(line, "bs.serving-sys.com") ||
+            strstr(line, "content.bitsontherun.com") ||
+            strstr(line, "core.insightexpressai.com") ||
+            strstr(line, "crashdump.spotify.com") ||
+            strstr(line, "d2gi7ultltnc2u.cloudfront.net") ||
+            strstr(line, "d3rt1990lpmkn.cloudfront.net") ||
+            strstr(line, "desktop.spotify.com") ||
+            strstr(line, "doubleclick.net") ||
+            strstr(line, "ds.serving-sys.com") ||
+            strstr(line, "googleadservices.com") ||
+            strstr(line, "googleads.g.doubleclick.net") ||
+            strstr(line, "gtssl2-ocsp.geotrust.com") ||
+            strstr(line, "js.moatads.com") ||
+            strstr(line, "log.spotify.com") ||
+            strstr(line, "media-match.com") ||
+            strstr(line, "omaze.com") ||
+            strstr(line, "open.spotify.com") ||
+            strstr(line, "pagead46.l.doubleclick.net") ||
+            strstr(line, "pagead2.googlesyndication.com") ||
+            strstr(line, "partner.googleadservices.com") ||
+            strstr(line, "pubads.g.doubleclick.net") ||
+            strstr(line, "redirector.gvt1.com") ||
+            strstr(line, "s0.2mdn.net") ||
+            strstr(line, "securepubads.g.doubleclick.net") ||
+            strstr(line, "spclient.wg.spotify.com") ||
+            strstr(line, "tpc.googlesyndication.com") ||
+            strstr(line, "v.jwpcdn.com") ||
+            strstr(line, "video-ad-stats.googlesyndication.com") ||
+            strstr(line, "weblb-wg.gslb.spotify.com") ||
+            strstr(line, "www.googleadservices.com") ||
+            strstr(line, "www.googletagservices.com") ||
+            strstr(line, "www.omaze.com"))
+        {
             ads_blocked = 1;
             break;
         }
@@ -194,52 +241,58 @@ void check_ads_blocked() {
 
     fclose(hosts_file);
 
-    if (ads_blocked) {
+    if (ads_blocked)
+    {
         printf("Ads are already blocked.\n");
-    } else {
+    }
+    else
+    {
         printf("Ads are not blocked.\n");
     }
 }
 #pragma endregion
 
-int main() {
-    #ifdef _WIN32
-        system("cls");
-    #else
-        system("clear");
-    #endif
+int main()
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
 
     int choice;
-    while (1) {
+    while (1)
+    {
         print_menu();
         scanf("%d", &choice);
 
 #pragma region switch
-        switch (choice) {
-            case 1:
-                block_ads();
-                break;
-            case 2:
-                check_ads_blocked();
-                break;
-            case 3:
-                printf("Exiting the program.\n");
-                exit(0);
-                break;
-            default:
-                printf("Invalid option. Please try again.\n");
+        switch (choice)
+        {
+        case 1:
+            block_ads();
+            break;
+        case 2:
+            check_ads_blocked();
+            break;
+        case 3:
+            printf("Exiting the program.\n");
+            exit(0);
+            break;
+        default:
+            printf("Invalid option. Try again.\n");
         }
 #pragma endregion
 
         // Wait for the user to press Enter to continue
-        printf("Press Enter to continue...\n");
+        printf("Press Enter to restart the program...\n");
         getchar(); // Absorb the newline character left in the buffer
         getchar(); // Wait for the user to press Enter
-        #ifdef _WIN32
-            system("cls");
-        #else
-            system("clear");
-        #endif
+#ifdef _WIN32
+        system("cls");
+#else
+        system("clear");
+#endif
     }
     return 0;
 }
